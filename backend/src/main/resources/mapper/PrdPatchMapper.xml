@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.prd.patch.PrdPatchMapper">
+
+    <insert id="insert">
+        INSERT INTO prd_patch (id, prd_id, source, source_finding_id, source_version_id, base_draft_revision,
+                              scope, operation, target_block_id, source_quote, new_content_markdown,
+                              reason, status, created_by, created_at, session_id)
+        VALUES (#{id}, #{prdId}, #{source}, #{sourceFindingId}, #{sourceVersionId}, #{baseDraftRevision},
+                #{scope}, #{operation}, #{targetBlockId}, #{sourceQuote}, #{newContentMarkdown},
+                #{reason}, #{status}, #{createdBy}, now(), #{sessionId})
+    </insert>
+
+    <sql id="columns">
+        p.id, p.prd_id, p.source, p.source_finding_id, p.source_version_id, p.base_draft_revision,
+        p.scope, p.operation, p.target_block_id, p.source_quote, p.new_content_markdown,
+        p.reason, p.status, p.created_by, p.created_at, p.applied_at, p.session_id, p.applied_revision,
+        (SELECT f.title FROM review_finding f WHERE f.id = p.source_finding_id) AS finding_title,
+        (SELECT f.severity FROM review_finding f WHERE f.id = p.source_finding_id) AS finding_severity
+    </sql>
+
+    <select id="selectById" resultType="com.prismprd.prd.patch.PrdPatch">
+        SELECT
+        <include refid="columns"/>
+        FROM prd_patch p
+        WHERE p.id = #{id}
+    </select>
+
+    <select id="selectByPrd" resultType="com.prismprd.prd.patch.PrdPatch">
+        SELECT
+        <include refid="columns"/>
+        FROM prd_patch p
+        WHERE p.prd_id = #{prdId}
+        ORDER BY p.created_at DESC
+    </select>
+
+    <select id="selectByIdForUpdate" resultType="com.prismprd.prd.patch.PrdPatch">
+        SELECT <include refid="columns"/> FROM prd_patch p WHERE p.id = #{id} FOR UPDATE OF p
+    </select>
+
+    <select id="selectUnversionedApplied" resultType="com.prismprd.prd.patch.PrdPatch">
+        SELECT <include refid="columns"/> FROM prd_patch p
+        WHERE p.prd_id = #{prdId} AND p.status = 'APPLIED' AND p.applied_revision &lt;= #{revision}
+          AND p.applied_revision > (SELECT patch_checkpoint_revision FROM prd_document WHERE id = #{prdId})
+          AND NOT EXISTS (SELECT 1 FROM prd_version_patch vp WHERE vp.patch_id = p.id)
+          AND COALESCE(
+              p.applied_revision > (SELECT v.draft_revision FROM prd_version v WHERE v.prd_id = #{prdId} ORDER BY v.version_no DESC LIMIT 1),
+              p.applied_at > COALESCE((SELECT MAX(v.created_at) FROM prd_version v WHERE v.prd_id = #{prdId}), '-infinity'::timestamptz))
+        ORDER BY p.applied_revision, p.id
+    </select>
+
+    <insert id="linkVersion">
+        INSERT INTO prd_version_patch(version_id, patch_id) VALUES (#{versionId}, #{patchId})
+    </insert>
+
+    <select id="selectByVersion" resultType="com.prismprd.prd.patch.PrdPatch">
+        SELECT <include refid="columns"/> FROM prd_patch p
+        JOIN prd_version_patch vp ON vp.patch_id = p.id WHERE vp.version_id = #{versionId}
+        ORDER BY p.applied_revision, p.id
+    </select>
+
+    <select id="selectPendingByFinding" resultType="com.prismprd.prd.patch.PrdPatch">
+        SELECT
+        <include refid="columns"/>
+        FROM prd_patch p
+        WHERE p.source_finding_id = #{findingId} AND p.status = 'PENDING'
+        ORDER BY p.created_at DESC
+    </select>
+
+    <update id="updateStatus">
+        UPDATE prd_patch
+        SET status = #{status},
+            applied_at = CASE WHEN #{status} = 'APPLIED' THEN now() ELSE applied_at END,
+            applied_revision = CASE WHEN #{status} = 'APPLIED'
+                THEN (SELECT revision FROM prd_document WHERE id = prd_patch.prd_id) ELSE applied_revision END
+        WHERE id = #{id} AND status = 'PENDING'
+    </update>
+</mapper>

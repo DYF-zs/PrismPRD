@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.review.ReviewFindingMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO review_finding (id, report_id, title, dimensions, severity, block_id, quote, evidence,
+                                    reason, suggestion, status, created_at, updated_at)
+        VALUES
+        <foreach collection="list" item="f" separator=",">
+            (#{f.id}, #{f.reportId}, #{f.title}, #{f.dimensions}::jsonb, #{f.severity}, #{f.blockId}, #{f.quote},
+             #{f.evidence}::jsonb, #{f.reason}, #{f.suggestion}, #{f.status}, now(), now())
+        </foreach>
+    </insert>
+
+    <select id="selectByReportId" resultType="com.prismprd.review.ReviewFinding">
+        SELECT id, report_id, title, dimensions::text AS dimensions, severity, block_id, quote,
+               evidence::text AS evidence, reason, suggestion, status, created_at, updated_at
+        FROM review_finding
+        WHERE report_id = #{reportId}
+        ORDER BY created_at
+    </select>
+
+    <select id="selectById" resultType="com.prismprd.review.ReviewFinding">
+        SELECT id, report_id, title, dimensions::text AS dimensions, severity, block_id, quote,
+               evidence::text AS evidence, reason, suggestion, status, created_at, updated_at
+        FROM review_finding
+        WHERE id = #{id}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE review_finding
+        SET status = #{status}, updated_at = now()
+        WHERE id = #{id}
+    </update>
+</mapper>

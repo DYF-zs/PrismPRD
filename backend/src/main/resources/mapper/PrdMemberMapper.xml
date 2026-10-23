@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.prd.document.PrdMemberMapper">
+
+    <insert id="insert">
+        INSERT INTO prd_member (id, prd_id, user_id, role, created_by, created_at)
+        VALUES (#{id}, #{prdId}, #{userId}, #{role}, #{createdBy}, now())
+    </insert>
+
+    <select id="selectByPrd" resultType="com.prismprd.prd.document.PrdMemberView">
+        SELECT m.user_id, m.role, u.username, u.display_name, u.email
+        FROM prd_member m
+        JOIN app_user u ON u.id = m.user_id
+        WHERE m.prd_id = #{prdId}
+        ORDER BY m.created_at
+    </select>
+
+    <select id="selectRole" resultType="string">
+        SELECT role
+        FROM prd_member
+        WHERE prd_id = #{prdId} AND user_id = #{userId}
+    </select>
+
+    <delete id="deleteByPrd">
+        DELETE FROM prd_member
+        WHERE prd_id = #{prdId}
+    </delete>
+
+    <delete id="deleteByPrdAndUser">
+        DELETE FROM prd_member
+        WHERE prd_id = #{prdId} AND user_id = #{userId}
+    </delete>
+</mapper>

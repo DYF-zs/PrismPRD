@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.review.ReviewJobMapper">
+
+    <insert id="insert">
+        INSERT INTO review_job (id, prd_id, prd_version_id, rubric_id, status, model_profile, created_by, created_at)
+        VALUES (#{id}, #{prdId}, #{prdVersionId}, #{rubricId}, #{status}, #{modelProfile}, #{createdBy}, now())
+    </insert>
+
+    <select id="selectById" resultType="com.prismprd.review.ReviewJob">
+        SELECT id, prd_id, prd_version_id, rubric_id, status, model_profile, error_message,
+               created_by, started_at, finished_at, created_at
+        FROM review_job
+        WHERE id = #{id}
+    </select>
+
+    <select id="countActive" resultType="int">
+        SELECT count(*) FROM review_job WHERE prd_id = #{prdId} AND status IN ('PENDING', 'RUNNING')
+    </select>
+
+    <update id="markInterrupted">
+        UPDATE review_job SET status = 'FAILED', finished_at = now(),
+            error_message = '本地服务中断，评审未完成，请重新发起'
+        WHERE status IN ('PENDING', 'RUNNING')
+    </update>
+
+    <update id="markRunning">
+        UPDATE review_job
+        SET status = 'RUNNING', started_at = now()
+        WHERE id = #{id} AND status = 'PENDING'
+    </update>
+
+    <update id="markSuccess">
+        UPDATE review_job
+        SET status = 'SUCCESS', finished_at = now()
+        WHERE id = #{id}
+    </update>
+
+    <update id="markFailed">
+        UPDATE review_job
+        SET status = 'FAILED', error_message = #{errorMessage}, finished_at = now()
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectByPrd" resultType="com.prismprd.web.dto.ReviewJobSummary">
+        SELECT j.id, j.prd_id, j.prd_version_id, j.rubric_id, j.status, j.model_profile, j.error_message,
+               j.created_by, j.started_at, j.finished_at, j.created_at,
+               v.version_no, r.overall_score, r.readiness, r.summary,
+               rubric.name AS rubric_name, rubric.version AS rubric_version
+        FROM review_job j
+        JOIN prd_version v ON v.id = j.prd_version_id
+        JOIN review_rubric rubric ON rubric.id = j.rubric_id
+        LEFT JOIN review_report r ON r.review_job_id = j.id
+        WHERE j.prd_id = #{prdId}
+        ORDER BY j.created_at DESC
+    </select>
+</mapper>

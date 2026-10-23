@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.prd.version.PrdVersionMapper">
+
+    <insert id="insert">
+        WITH next_number AS (
+            UPDATE prd_document SET version_no_counter = GREATEST(version_no_counter,
+                (SELECT COALESCE(MAX(version_no), 0) FROM prd_version WHERE prd_id = #{prdId})) + 1
+            WHERE id = #{prdId} RETURNING version_no_counter
+        )
+        INSERT INTO prd_version (id, prd_id, version_no, editor_json, markdown_snapshot, source, change_summary, created_by, created_at, draft_revision, title_snapshot)
+        SELECT #{id}, #{prdId}, version_no_counter, #{editorJson}::jsonb, #{markdownSnapshot},
+               #{source}, #{changeSummary}, #{createdBy}, now(), #{draftRevision}, #{titleSnapshot}
+        FROM next_number
+    </insert>
+
+    <select id="exists" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM prd_version WHERE id = #{id})
+    </select>
+
+    <select id="selectById" resultType="com.prismprd.prd.version.PrdVersion">
+        SELECT id, prd_id, version_no, editor_json::text AS editor_json, markdown_snapshot, source, change_summary, created_by, created_at, draft_revision, title_snapshot
+        FROM prd_version
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByPrd" resultType="com.prismprd.prd.version.PrdVersion">
+        SELECT id, prd_id, version_no, editor_json::text AS editor_json, markdown_snapshot, source, change_summary, created_by, created_at, draft_revision, title_snapshot
+        FROM prd_version
+        WHERE prd_id = #{prdId}
+        ORDER BY version_no DESC
+    </select>
+</mapper>

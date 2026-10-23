@@ -1,0 +1,73 @@
+server:
+  address: ${PRISM_BIND_ADDRESS:127.0.0.1}
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+  application:
+    name: prismprd
+  datasource:
+    url: jdbc:postgresql://${PRISM_DB_HOST:localhost}:${PRISM_DB_PORT:5432}/${PRISM_DB_NAME:prismprd}
+    username: ${PRISM_DB_USER:postgres}
+    password: ${PRISM_DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  ai:
+    model:
+      chat: ${PRISM_MODEL_PROVIDER:deepseek}
+      embedding: none
+      image: none
+    deepseek:
+      api-key: ${DEEPSEEK_API_KEY:your-api-key}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      chat:
+        options:
+          model: ${DEEPSEEK_MODEL:deepseek-flash}
+    zhipuai:
+      api-key: ${ZHIPU_API_KEY:your-api-key}
+      base-url: https://open.bigmodel.cn/api/paas
+      chat:
+        options:
+          model: glm-4.6
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-handlers-package: com.prismprd.common.mybatis
+  configuration:
+    map-underscore-to-camel-case: true
+
+prism:
+  knowledge:
+    storage-root: ${PRISM_KNOWLEDGE_STORAGE:./data/knowledge}
+    ollama-url: ${PRISM_OLLAMA_URL:http://127.0.0.1:11434}
+    embedding-model: ${PRISM_EMBEDDING_MODEL:bge-m3}
+    embedding-dimensions: ${PRISM_EMBEDDING_DIMENSIONS:1024}
+  auth:
+    mode: ${PRISM_AUTH_MODE:dev}
+    dev-user:
+      subject: dev-user
+      username: dev
+      display-name: 开发用户
+      email: dev@prismprd.local
+  cors:
+    allowed-origins: ${PRISM_CORS_ORIGINS:http://localhost:[*],http://127.0.0.1:[*]}
+  review:
+    agent: ${PRISM_REVIEW_AGENT:deepseek}
+    model-profile: ${DEEPSEEK_MODEL:deepseek-flash}
+    sse-timeout-seconds: 300
+  fix:
+    agent: ${PRISM_FIX_AGENT:deepseek}
+  testcase:
+    agent: ${PRISM_TESTCASE_AGENT:deepseek}
+  inline:
+    agent: ${PRISM_INLINE_AGENT:deepseek}
+  chat:
+    agent: ${PRISM_CHAT_AGENT:deepseek}
+    memory-limit: 20
+    max-steps: 20
+    sse-timeout-seconds: 300
+    executor-pool-size: 4

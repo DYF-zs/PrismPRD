@@ -1,0 +1,17 @@
+.git
+.tools
+.firecrawl
+.env*
+**/.env*
+**/node_modules
+**/target
+**/dist
+**/data
+**/tests
+**/src/test
+**/*.log
+**/*.tsbuildinfo
+publish
+release
+packaging
+scripts

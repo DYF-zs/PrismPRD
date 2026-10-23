@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.review.ReviewRubricMapper">
+
+    <sql id="columns">
+        id, rubric_key, name, version, description, enabled, created_by, created_at
+    </sql>
+
+    <select id="selectEnabledLatest" resultType="com.prismprd.review.ReviewRubric">
+        SELECT r.id, r.rubric_key, r.name, r.version, r.description, r.enabled, r.created_by, r.created_at
+        FROM review_rubric r
+        JOIN (SELECT rubric_key, MAX(version) AS max_version FROM review_rubric WHERE enabled GROUP BY rubric_key) m
+          ON r.rubric_key = m.rubric_key AND r.version = m.max_version
+        WHERE r.enabled
+        ORDER BY r.created_at
+    </select>
+
+    <select id="selectById" resultType="com.prismprd.review.ReviewRubric">
+        SELECT <include refid="columns"/>
+        FROM review_rubric
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectLatestByKey" resultType="com.prismprd.review.ReviewRubric">
+        SELECT <include refid="columns"/>
+        FROM review_rubric
+        WHERE rubric_key = #{rubricKey} AND enabled
+        ORDER BY version DESC
+        LIMIT 1
+    </select>
+    <select id="lockById" resultType="com.prismprd.review.ReviewRubric">
+        SELECT <include refid="columns"/> FROM review_rubric WHERE id=#{id} FOR UPDATE
+    </select>
+    <select id="selectVersions" resultType="com.prismprd.review.ReviewRubric">
+        SELECT <include refid="columns"/> FROM review_rubric WHERE rubric_key=#{rubricKey} ORDER BY version DESC
+    </select>
+    <insert id="insert">
+        INSERT INTO review_rubric(id,rubric_key,name,version,description,enabled,created_by,created_at)
+        VALUES(#{id},#{rubricKey},#{name},#{version},#{description},true,#{createdBy},now())
+    </insert>
+</mapper>

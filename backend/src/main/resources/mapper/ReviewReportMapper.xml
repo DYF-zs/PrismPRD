@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.review.ReviewReportMapper">
+
+    <insert id="insert">
+        INSERT INTO review_report (id, review_job_id, overall_score, readiness, summary, strengths, major_risks,
+                                   priorities, model_name, model_version, prompt_version, rubric_version, created_at)
+        VALUES (#{id}, #{reviewJobId}, #{overallScore}, #{readiness}, #{summary}, #{strengths}::jsonb, #{majorRisks}::jsonb,
+                #{priorities}::jsonb, #{modelName}, #{modelVersion}, #{promptVersion}, #{rubricVersion}, now())
+    </insert>
+
+    <select id="selectByJobId" resultType="com.prismprd.review.ReviewReport">
+        SELECT id, review_job_id, overall_score, readiness, summary,
+               strengths::text AS strengths, major_risks::text AS major_risks, priorities::text AS priorities,
+               model_name, model_version, prompt_version, rubric_version, created_at
+        FROM review_report
+        WHERE review_job_id = #{reviewJobId}
+    </select>
+
+    <select id="selectById" resultType="com.prismprd.review.ReviewReport">
+        SELECT id, review_job_id, overall_score, readiness, summary,
+               strengths::text AS strengths, major_risks::text AS major_risks, priorities::text AS priorities,
+               model_name, model_version, prompt_version, rubric_version, created_at
+        FROM review_report
+        WHERE id = #{id}
+    </select>
+</mapper>

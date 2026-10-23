@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.review.ReviewScoreMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO review_score (id, report_id, dimension_key, applicable, score, rationale, evidence, suggestions, display_order)
+        VALUES
+        <foreach collection="list" item="s" separator=",">
+            (#{s.id}, #{s.reportId}, #{s.dimensionKey}, #{s.applicable}, #{s.score}, #{s.rationale},
+             #{s.evidence}::jsonb, #{s.suggestions}::jsonb, #{s.displayOrder})
+        </foreach>
+    </insert>
+
+    <select id="selectByReportId" resultType="com.prismprd.review.ReviewScore">
+        SELECT id, report_id, dimension_key, applicable, score, rationale,
+               evidence::text AS evidence, suggestions::text AS suggestions, display_order
+        FROM review_score
+        WHERE report_id = #{reportId}
+        ORDER BY display_order
+    </select>
+</mapper>

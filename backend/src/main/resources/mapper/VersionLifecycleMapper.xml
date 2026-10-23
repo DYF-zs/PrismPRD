@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.prd.version.VersionLifecycleMapper">
+    <update id="useVersion">
+        UPDATE prd_document p SET draft_json = v.editor_json, draft_markdown = v.markdown_snapshot,
+            revision = p.revision + 1, patch_checkpoint_revision = p.revision + 1,
+            current_version_id = v.id, updated_at = now()
+        FROM prd_version v
+        WHERE p.id = #{prdId} AND v.id = #{versionId} AND v.prd_id = p.id AND p.revision = #{revision}
+    </update>
+    <update id="staleSuggestions">
+        UPDATE prd_patch SET status = 'STALE' WHERE prd_id = #{prdId} AND status = 'PENDING'
+    </update>
+    <update id="clearBaseline">
+        UPDATE prd_document SET current_version_id = NULL, current_score = NULL,
+            status = CASE WHEN status = 'ARCHIVED' THEN status ELSE 'DRAFT' END, updated_at = now()
+        WHERE id = #{prdId}
+    </update>
+    <delete id="deleteSuggestions">
+        DELETE FROM prd_patch p WHERE p.status != 'APPLIED' AND (
+            p.source_version_id = #{versionId} OR p.source_finding_id IN (
+                SELECT f.id FROM review_finding f JOIN review_report r ON r.id = f.report_id
+                JOIN review_job j ON j.id = r.review_job_id WHERE j.prd_version_id = #{versionId}
+            )
+        )
+    </delete>
+    <delete id="deleteReviews">
+        DELETE FROM review_job WHERE prd_version_id = #{versionId}
+    </delete>
+    <delete id="deleteVersion">
+        DELETE FROM prd_version WHERE id = #{versionId}
+    </delete>
+</mapper>

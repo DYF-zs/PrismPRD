@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.review.ReviewDimensionMapper">
+
+    <select id="selectByRubric" resultType="com.prismprd.review.ReviewDimension">
+        SELECT id, rubric_id, dimension_key, name, description,
+               checklist::text AS checklist, score_anchor::text AS score_anchor,
+               severity_anchor::text AS severity_anchor, applicability_rule, display_order
+        FROM review_dimension
+        WHERE rubric_id = #{rubricId}
+        ORDER BY display_order
+    </select>
+    <insert id="insert">
+        INSERT INTO review_dimension(id,rubric_id,dimension_key,name,description,checklist,score_anchor,severity_anchor,applicability_rule,display_order)
+        VALUES(#{id},#{rubricId},#{dimensionKey},#{name},#{description},#{checklist}::jsonb,
+            #{scoreAnchor}::jsonb,#{severityAnchor}::jsonb,#{applicabilityRule},#{displayOrder})
+    </insert>
+</mapper>

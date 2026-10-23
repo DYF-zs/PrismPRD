@@ -1,0 +1,19 @@
+{
+  "fontTools": "4.67.0",
+  "fonts": [
+    {
+      "file": "NotoSansSC-Regular.ttf",
+      "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf",
+      "weight": 400,
+      "upstreamSha256": "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da",
+      "sha256": "d91c992f57c2496d5a067436f19cadc7bc7dff5b23e0d7a09dee50e6244e772b"
+    },
+    {
+      "file": "NotoEmoji-Regular.ttf",
+      "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf",
+      "weight": 400,
+      "upstreamSha256": "de6c18832938afc99caf132b39d6a30a19bac7f2e812e28db2535b4608d27551",
+      "sha256": "841bafd5dcbaa312bb8cd5c1723dbe61745f404360139bb2999e7a27629c40b4"
+    }
+  ]
+}

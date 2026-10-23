@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.prd.document.PrdDocumentMapper">
+
+    <select id="lockById" resultType="java.util.UUID">
+        SELECT id FROM prd_document WHERE id = #{id} FOR UPDATE
+    </select>
+
+    <sql id="summaryColumns">
+        p.id,
+        p.title,
+        p.status,
+        p.revision,
+        p.current_version_id,
+        (SELECT v.version_no FROM prd_version v WHERE v.id = p.current_version_id) AS current_version_no,
+        p.current_score,
+        (SELECT count(*) FROM review_job r WHERE r.prd_id = p.id) AS review_count,
+        p.owner_id,
+        u.display_name AS owner_name,
+        p.updated_at
+    </sql>
+
+    <sql id="visibilityFilter">
+        (p.owner_id = #{userId} OR EXISTS (SELECT 1 FROM prd_member m WHERE m.prd_id = p.id AND m.user_id = #{userId}))
+    </sql>
+
+    <insert id="insert">
+        INSERT INTO prd_document (id, title, status, owner_id, draft_json, draft_markdown, revision, created_at, updated_at)
+        VALUES (#{id}, #{title}, #{status}, #{ownerId}, #{draftJson}::jsonb, #{draftMarkdown}, #{revision}, now(), now())
+    </insert>
+
+    <select id="selectById" resultType="com.prismprd.prd.document.PrdDocument">
+        SELECT p.id, p.title, p.status, p.owner_id, p.draft_json::text AS draft_json, p.draft_markdown,
+               p.revision, p.current_version_id, p.current_score, p.created_at, p.updated_at,
+               (SELECT v.version_no FROM prd_version v WHERE v.id = p.current_version_id) AS current_version_no,
+               u.display_name AS owner_name
+        FROM prd_document p
+        JOIN app_user u ON u.id = p.owner_id
+        WHERE p.id = #{id}
+    </select>
+
+    <select id="selectPage" resultType="com.prismprd.prd.document.PrdDocumentSummary">
+        SELECT
+        <include refid="summaryColumns"/>
+        FROM prd_document p
+        JOIN app_user u ON u.id = p.owner_id
+        WHERE <include refid="visibilityFilter"/>
+        <if test="query != null and query != ''">
+            AND p.title ILIKE '%' || #{query} || '%'
+        </if>
+        <if test="status != null and status != ''">
+            AND p.status = #{status}
+        </if>
+        ORDER BY p.updated_at DESC, p.id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countPage" resultType="long">
+        SELECT count(*)
+        FROM prd_document p
+        WHERE <include refid="visibilityFilter"/>
+        <if test="query != null and query != ''">
+            AND p.title ILIKE '%' || #{query} || '%'
+        </if>
+        <if test="status != null and status != ''">
+            AND p.status = #{status}
+        </if>
+    </select>
+
+    <update id="updateDraft">
+        UPDATE prd_document
+        SET draft_json = #{draftJson}::jsonb,
+            draft_markdown = #{draftMarkdown},
+            revision = revision + 1,
+            updated_at = now()
+        WHERE id = #{id} AND revision = #{revision}
+    </update>
+
+    <update id="updateMeta">
+        UPDATE prd_document
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="status != null">status = #{status},</if>
+            updated_at = now()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateOwner">
+        UPDATE prd_document
+        SET owner_id = #{ownerId}, updated_at = now()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateCurrentVersion">
+        UPDATE prd_document
+        SET current_version_id = #{versionId}, current_score = NULL,
+            status = CASE WHEN status = 'ARCHIVED' THEN status ELSE 'DRAFT' END, updated_at = now()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateReviewOutcome">
+        UPDATE prd_document
+        SET status = #{status}, current_score = #{currentScore}, updated_at = now()
+        WHERE id = #{id} AND current_version_id = #{versionId} AND status != 'ARCHIVED'
+    </update>
+
+    <select id="resolveUserRole" resultType="string">
+        SELECT CASE
+                   WHEN p.owner_id = #{userId} THEN 'OWNER'
+                   ELSE (SELECT m.role FROM prd_member m WHERE m.prd_id = p.id AND m.user_id = #{userId})
+               END AS role
+        FROM prd_document p
+        WHERE p.id = #{prdId}
+    </select>
+</mapper>

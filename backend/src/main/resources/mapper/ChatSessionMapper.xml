@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.prd.chat.ChatSessionMapper">
+
+    <insert id="insert">
+        INSERT INTO chat_session (id, prd_id, title, created_by, created_at, updated_at)
+        VALUES (#{id}, #{prdId}, #{title}, #{createdBy}, now(), now())
+    </insert>
+
+    <select id="selectById" resultType="com.prismprd.prd.chat.ChatSession">
+        SELECT id, prd_id, title, created_by, created_at, updated_at
+        FROM chat_session
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByPrd" resultType="com.prismprd.prd.chat.ChatSession">
+        SELECT id, prd_id, title, created_by, created_at, updated_at
+        FROM chat_session
+        WHERE prd_id = #{prdId}
+        ORDER BY updated_at DESC
+    </select>
+
+    <update id="touchUpdated">
+        UPDATE chat_session
+        SET updated_at = now()
+        WHERE id = #{id}
+    </update>
+</mapper>

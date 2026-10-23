@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.prd.testcase.TestCaseMapper">
+    <select id="selectAcceptancePatch" resultType="java.util.UUID">
+        SELECT a.patch_id FROM test_acceptance_patch a JOIN prd_patch p ON p.id = a.patch_id
+        WHERE a.generation_id = #{generationId} AND a.issue_index = #{index} AND p.status IN ('PENDING', 'APPLIED')
+    </select>
+    <select id="selectAppliedIssues" resultType="integer">
+        SELECT a.issue_index FROM test_acceptance_patch a JOIN prd_patch p ON p.id = a.patch_id
+        WHERE a.generation_id = #{generationId} AND p.status = 'APPLIED'
+    </select>
+    <insert id="linkAcceptancePatch">
+        INSERT INTO test_acceptance_patch(generation_id, issue_index, patch_id) VALUES (#{generationId}, #{index}, #{patchId})
+        ON CONFLICT (generation_id, issue_index) DO UPDATE SET patch_id = EXCLUDED.patch_id
+    </insert>
+    <select id="selectReport" resultType="string">
+        SELECT result::text FROM test_generation_report WHERE prd_version_id = #{versionId}
+    </select>
+    <insert id="saveReport">
+        INSERT INTO test_generation_report(prd_version_id, result) VALUES (#{versionId}, #{result}::jsonb)
+        ON CONFLICT (prd_version_id) DO UPDATE SET result = EXCLUDED.result, updated_at = now()
+    </insert>
+
+    <insert id="insertBatch">
+        INSERT INTO test_case (id, prd_version_id, scenario, preconditions, steps, input_data,
+                               expected_result, case_type, source_block_id, created_at)
+        VALUES
+        <foreach collection="list" item="c" separator=",">
+            (#{c.id}, #{c.prdVersionId}, #{c.scenario}, #{c.preconditions}, #{c.steps}::jsonb,
+             #{c.inputData}, #{c.expectedResult}, #{c.caseType}, #{c.sourceBlockId}, now())
+        </foreach>
+    </insert>
+
+    <delete id="deleteByVersion">
+        DELETE FROM test_case
+        WHERE prd_version_id = #{versionId}
+    </delete>
+
+    <select id="selectByVersion" resultType="com.prismprd.prd.testcase.TestCase">
+        SELECT id, prd_version_id, scenario, preconditions, steps::text AS steps, input_data,
+               expected_result, case_type, source_block_id, created_at
+        FROM test_case
+        WHERE prd_version_id = #{versionId}
+        ORDER BY case_type, scenario
+    </select>
+</mapper>
