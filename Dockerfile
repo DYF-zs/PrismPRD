@@ -14,7 +14,7 @@ RUN mvn -B -f backend/pom.xml -Prelease -Dmaven.test.skip=true package
 
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
-RUN mkdir -p /app/data/knowledge && chown -R 10001:10001 /app/data
+RUN mkdir -p /app/data/knowledge /app/data/settings && chown -R 10001:10001 /app/data
 COPY --from=backend /build/backend/target/prismprd-backend-0.1.0.jar /app/prismprd.jar
 ENV PRISM_BIND_ADDRESS=0.0.0.0
 USER 10001:10001

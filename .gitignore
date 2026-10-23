@@ -10,6 +10,7 @@ Thumbs.db
 __pycache__/
 backend/target/
 backend/data/
+/data/
 *.iml
 .idea/
 *.log

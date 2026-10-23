@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "prism.review")
 public class ReviewProperties {
 
-    private String agent = "deepseek";
+    private String agent = "configured";
 
     private String modelProfile = "deepseek-flash";
 

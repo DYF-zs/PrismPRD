@@ -42,6 +42,7 @@ public class ReviewService {
     private final PermissionService permissionService;
     private final ReviewExecutionService executionService;
     private final ReviewProperties reviewProperties;
+    private final com.prismprd.model.ModelClientRegistry modelRegistry;
     private final ObjectMapper objectMapper;
     private final PrdDocumentMapper documentMapper;
 
@@ -67,7 +68,8 @@ public class ReviewService {
         job.setPrdVersionId(version.getId());
         job.setRubricId(rubric.getId());
         job.setStatus(ReviewJobStatus.PENDING.name());
-        job.setModelProfile(reviewProperties.getModelProfile());
+        job.setModelProfile("mock".equals(reviewProperties.getAgent())
+                ? reviewProperties.getModelProfile() : modelRegistry.current().profile());
         job.setCreatedBy(userId);
         reviewJobMapper.insert(job);
 

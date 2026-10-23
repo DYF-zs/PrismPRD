@@ -49,6 +49,7 @@ public class PrdAgentExecutor {
         executor.setCorePoolSize(properties.getExecutorPoolSize());
         executor.setMaxPoolSize(properties.getExecutorPoolSize());
         executor.setQueueCapacity(100);
+        executor.setTaskDecorator(com.prismprd.model.ModelScope::decorate);
         executor.initialize();
     }
 

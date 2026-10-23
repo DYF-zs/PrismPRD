@@ -4,10 +4,11 @@
 
 ## 项目介绍
 
-PrismPRD 将需求文档的编写、质量检查和交付串联在同一个工作台中。前端采用 React、TypeScript 和 TipTap，后端采用 Java / Spring Boot，PostgreSQL 保存业务数据；DeepSeek 提供 AI 能力，Ollama / bge-m3 在本机生成知识向量。
+PrismPRD 将需求文档的编写、质量检查和交付串联在同一个工作台中。前端采用 React、TypeScript 和 TipTap，后端采用 Java / Spring Boot，PostgreSQL 保存业务数据；Spring AI 统一接入模型服务，Ollama / bge-m3 在本机生成知识向量。
 
 ### 主要功能
 
+- **模型设置**：支持 DeepSeek、智谱 AI 和 OpenAI 兼容接口，在网页中管理平台、模型名称、API 地址和 API Key，保存多份配置并统一启用。对话、评审、改写、修复和测试用例生成共用当前模型，切换影响新任务，执行中的任务使用已捕获的配置。支持结构化输出与工具调用连接测试，历史评审记录实际使用的平台与模型。
 - **AI 工作台**：首页直接描述需求开始对话，中央与 AI 讨论，右侧编辑 PRD 草稿；最近对话列表和草稿预览的宽度可拖动调整，并保存在当前浏览器。顶部导航可切换工作台、文档库和评审标准。
 - **PRD 管理**：空白、模板或 AI 起草入口，文档列表、搜索、状态筛选和标题管理；首页和文档库可直接上传 Markdown、TXT、DOCX 创建 PRD。文档所有者可在文档库表格右侧或移动端卡片中永久删除文档及其版本、评审、对话和测试数据，共享知识库保留。
 - **文档编辑**：富文本、多级标题、目录定位、自动保存，以及 Markdown、TXT、DOCX 导入。导入覆盖草稿前确认，保留历史内容可先创建版本。
@@ -39,7 +40,7 @@ PrismPRD 将需求文档的编写、质量检查和交付串联在同一个工�
 | PostgreSQL 16 | 保存业务数据，`postgres:16` |
 | Ollama、bge-m3 | 生成 1024 维知识向量，`ollama/ollama` 和 [bge-m3](https://ollama.com/library/bge-m3) |
 
-Spring Boot、Spring AI 等 Java 依赖由 Maven 根据 `backend/pom.xml` 下载；React、TipTap 等前端依赖由 npm 根据锁文件下载。Dockerfile 负责在上述镜像中编译项目。首次准备需要联网访问镜像仓库、Maven、npm 和模型下载服务，并预留数 GB 磁盘空间。DeepSeek 使用云端 API。
+Spring Boot、Spring AI 等 Java 依赖由 Maven 根据 `backend/pom.xml` 下载；React、TipTap 等前端依赖由 npm 根据锁文件下载。Dockerfile 负责在上述镜像中编译项目。首次准备需要联网访问镜像仓库、Maven、npm 和模型下载服务，并预留数 GB 磁盘空间。AI 请求使用所配置平台的 API。
 
 ### 2. 填写配置
 
@@ -49,9 +50,9 @@ Spring Boot、Spring AI 等 Java 依赖由 Maven 根据 `backend/pom.xml` 下载
 Copy-Item .env.example .env
 ```
 
-编辑 `.env`，填写 `DEEPSEEK_API_KEY` 和随机生成的较长数据库密码 `PRISM_DB_PASSWORD`，其余项目按示例保留。配置采用 `KEY=value` 格式，值直接填写，注释独占一行。模型名称以所用服务支持的标识为准。
+编辑 `.env`，填写随机生成的较长数据库密码 `PRISM_DB_PASSWORD`，其余项目按示例保留。配置采用 `KEY=value` 格式，值直接填写，注释独占一行。AI 平台和 API Key 在启动后的「模型设置」页面填写。
 
-容器内数据库主机为 `prismprd-postgres`，Ollama 地址为 `http://prismprd-ollama:11434`；`localhost` 在容器内表示容器自身。`.env` 含明文密钥，应私有保存。
+容器内数据库主机为 `prismprd-postgres`，Ollama 地址为 `http://prismprd-ollama:11434`；`localhost` 在容器内表示容器自身。`.env` 含数据库凭据，应私有保存。
 
 ### 3. 下载镜像并构建应用
 
@@ -98,7 +99,8 @@ docker exec prismprd-ollama ollama list
 ```powershell
 docker create --name prismprd-app --network prismprd --restart on-failure:5 `
   --env-file .env --stop-timeout 60 -p 127.0.0.1:8080:8080 `
-  -v prismprd-knowledge:/app/data/knowledge prismprd:local
+  -v prismprd-knowledge:/app/data/knowledge `
+  -v prismprd-settings:/app/data/settings prismprd:local
 ```
 
 应用启动失败时最多自动重试五次。数据库表结构由 Flyway 在应用启动时创建或迁移。
@@ -118,6 +120,10 @@ docker logs -f prismprd-app
 .\stop.ps1
 ```
 
+首次进入页面，打开顶部「模型设置」，添加配置，填写平台 API Key 和模型标识。API 地址填写根路径：DeepSeek 为 `https://api.deepseek.com`，智谱为 `https://open.bigmodel.cn/api/paas`，OpenAI 为 `https://api.openai.com/v1`，兼容服务按其文档填写。容器访问本机 API 服务使用 `host.docker.internal`。支持 HTTPS 地址和显式本机 HTTP 地址；私有网络地址与重定向会被拦截。
+
+测试连接会发送两条短请求，检查结构化输出与工具调用，可能产生 API 费用。首份配置保存后自动启用；其余配置通过「启用」切换，所有 AI 功能共用当前配置。编辑时 Key 留空保留原值，修改平台或地址后须重新填写 Key。已有 `DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL` 和 `DEEPSEEK_BASE_URL` 配置可在首次初始化时导入为 DeepSeek 配置。
+
 修改 `.env` 后，先关闭服务，执行 `docker rm prismprd-app`，再按第 5 步重新创建应用容器并启动。更新源码后先重新执行 `docker build -t prismprd:local .`，再重新创建应用容器。
 
 启动问题可查看 `docker logs prismprd-app`、`docker logs prismprd-postgres` 和 `docker logs prismprd-ollama`。确认 `.env` 中的服务地址、数据库凭据，以及 `docker exec prismprd-ollama ollama list` 中的模型名称。
@@ -125,10 +131,12 @@ docker logs -f prismprd-app
 ## 数据与使用范围
 
 - 默认使用固定本地用户，适用于本机单实例运行。
-- 文档、对话、版本和评审保存在 `prismprd-postgres-data` 数据卷，知识原文件保存在 `prismprd-knowledge`，模型保存在 `prismprd-ollama-models`；关闭服务后保留数据。备份与迁移时，数据库和知识原文件配套保存。
+- 文档、对话、版本、评审和模型配置保存在 `prismprd-postgres-data`，知识原文件保存在 `prismprd-knowledge`，向量模型保存在 `prismprd-ollama-models`，API Key 加密密钥保存在 `prismprd-settings` 的 `model.key` 文件中；关闭服务后保留数据。备份与迁移时，数据库、知识原文件和加密密钥配套保存；加密密钥缺失时须恢复文件或重新填写 API Key。
 - 容器内数据库是独立实例，本机原生数据库的数据可通过备份恢复迁入。数据卷的删除会永久删除其中的数据。
 - AI 请求会联网调用配置的模型服务；检索片段随请求发送，请按资料保密要求使用。
 - AI 修改由用户确认后写入正文；知识文件支持 Markdown、TXT、DOCX 和文本型 PDF。
 - DOCX 提取文字、基础标题、列表和表格；扫描型 PDF 可在 OCR 处理后作为参考资料上传。PDF 导出采用文档内容排版，外链图片显示说明与地址。
 - 保存冲突和过期 AI 补丁会被拦截，页面保留用户输入供处理。评审及生成结果与其来源版本关联。
 - Mermaid 图形在页面中渲染，Markdown / PDF 导出保留代码。图形采用统一安全配置，单图最多 20,000 字符、500 行、300 条边；正文可使用 HTTP、HTTPS 和邮件链接，相对链接按当前站点解析。页面建议使用近期版本的 Chrome、Edge、Firefox 或 Safari 17.4 及以上版本。
+
+第三方来源与许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

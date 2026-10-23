@@ -13,6 +13,7 @@ public class ReviewExecutorConfig {
         executor.setCorePoolSize(2);
         executor.setMaxPoolSize(4);
         executor.setQueueCapacity(50);
+        executor.setTaskDecorator(com.prismprd.model.ModelScope::decorate);
         executor.setThreadNamePrefix("review-");
         executor.initialize();
         return executor;

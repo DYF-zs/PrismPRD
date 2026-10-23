@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "prism.chat")
 public class ChatProperties {
 
-    private String agent = "deepseek";
+    private String agent = "configured";
 
     /** 运行时加载的最近消息条数（ChatMemory 窗口） */
     private int memoryLimit = 20;

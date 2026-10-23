@@ -18,7 +18,7 @@ spring:
     locations: classpath:db/migration
   ai:
     model:
-      chat: ${PRISM_MODEL_PROVIDER:deepseek}
+      chat: none
       embedding: none
       image: none
     deepseek:
@@ -27,12 +27,6 @@ spring:
       chat:
         options:
           model: ${DEEPSEEK_MODEL:deepseek-flash}
-    zhipuai:
-      api-key: ${ZHIPU_API_KEY:your-api-key}
-      base-url: https://open.bigmodel.cn/api/paas
-      chat:
-        options:
-          model: glm-4.6
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml
@@ -41,6 +35,8 @@ mybatis:
     map-underscore-to-camel-case: true
 
 prism:
+  models:
+    key-path: ${PRISM_MODEL_KEY_PATH:./data/settings/model.key}
   knowledge:
     storage-root: ${PRISM_KNOWLEDGE_STORAGE:./data/knowledge}
     ollama-url: ${PRISM_OLLAMA_URL:http://127.0.0.1:11434}
@@ -56,17 +52,17 @@ prism:
   cors:
     allowed-origins: ${PRISM_CORS_ORIGINS:http://localhost:[*],http://127.0.0.1:[*]}
   review:
-    agent: ${PRISM_REVIEW_AGENT:deepseek}
+    agent: ${PRISM_REVIEW_AGENT:configured}
     model-profile: ${DEEPSEEK_MODEL:deepseek-flash}
     sse-timeout-seconds: 300
   fix:
-    agent: ${PRISM_FIX_AGENT:deepseek}
+    agent: ${PRISM_FIX_AGENT:configured}
   testcase:
-    agent: ${PRISM_TESTCASE_AGENT:deepseek}
+    agent: ${PRISM_TESTCASE_AGENT:configured}
   inline:
-    agent: ${PRISM_INLINE_AGENT:deepseek}
+    agent: ${PRISM_INLINE_AGENT:configured}
   chat:
-    agent: ${PRISM_CHAT_AGENT:deepseek}
+    agent: ${PRISM_CHAT_AGENT:configured}
     memory-limit: 20
     max-steps: 20
     sse-timeout-seconds: 300

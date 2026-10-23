@@ -1,6 +1,6 @@
 # 第三方声明
 
-PrismPRD 的 Agent 框架及知识导入、分块、Ollama 向量化和检索工具流程基于 JChatMind 组件实现。相关代码遵循以下许可证。
+PrismPRD 的 Agent 框架、Spring AI 模型客户端注册设计及知识导入、分块、Ollama 向量化和检索工具流程基于 JChatMind 组件实现。相关代码遵循以下许可证。
 
 ## JChatMind
 
