@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.prismprd.knowledge.KnowledgeChunkMapper">
+    <resultMap id="hit" type="com.prismprd.knowledge.KnowledgeTypes$Hit">
+        <constructor>
+            <arg column="document_id" javaType="java.util.UUID"/>
+            <arg column="chunk_id" javaType="java.util.UUID"/>
+            <arg column="title" javaType="java.lang.String"/>
+            <arg column="section_path" javaType="java.lang.String"/>
+            <arg column="chunk_text" javaType="java.lang.String"/>
+            <arg column="score" javaType="_double"/>
+        </constructor>
+    </resultMap>
+
+    <insert id="insert">
+        INSERT INTO knowledge_chunk(id,knowledge_document_id,chunk_text,section_path,chunk_index,embedding)
+        VALUES(#{id},#{documentId},#{chunk.content},#{chunk.sectionPath},#{index},
+               #{embedding,jdbcType=OTHER,typeHandler=com.prismprd.common.mybatis.PgVectorTypeHandler}::vector)
+    </insert>
+
+    <select id="search" resultMap="hit">
+        SELECT d.id AS document_id, c.id AS chunk_id, d.title, c.section_path, c.chunk_text,
+               1 - (c.embedding &lt;=> #{query,jdbcType=OTHER,typeHandler=com.prismprd.common.mybatis.PgVectorTypeHandler}::vector) AS score
+        FROM knowledge_chunk c JOIN knowledge_document d ON d.id=c.knowledge_document_id
+        JOIN knowledge_base kb ON kb.id=d.knowledge_base_id
+        JOIN prd_knowledge_binding b ON b.knowledge_base_id=kb.id
+        WHERE b.prd_id=#{prd} AND kb.enabled AND d.processing_status='READY'
+          AND d.embedding_model=#{model} AND d.embedding_dimensions=#{dimensions}
+        ORDER BY score DESC, c.id LIMIT #{limit}
+    </select>
+</mapper>

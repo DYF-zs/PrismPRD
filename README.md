@@ -4,7 +4,7 @@
 
 ## 项目介绍
 
-PrismPRD 将需求文档的编写、质量检查和交付串联在同一个工作台中。前端采用 React、TypeScript 和 TipTap，后端采用 Java / Spring Boot，PostgreSQL 保存业务数据；Spring AI 统一接入模型服务，Ollama / bge-m3 在本机生成知识向量。
+PrismPRD 将需求文档的编写、质量检查和交付串联在同一个工作台中。前端采用 React、TypeScript 和 TipTap，后端采用 Java / Spring Boot，PostgreSQL 保存业务数据，pgvector 存储知识向量并执行余弦相似度检索；Spring AI 统一接入模型服务，Ollama / bge-m3 在本机生成知识向量。
 
 ### 主要功能
 
@@ -37,7 +37,7 @@ PrismPRD 将需求文档的编写、质量检查和交付串联在同一个工�
 | Node.js 22.12+、npm | 构建前端，`node:22-bookworm-slim` |
 | Java 21 JDK、Maven 3.9 | 构建后端，`maven:3.9-eclipse-temurin-21` |
 | Java 21 JRE | 运行应用，`eclipse-temurin:21-jre-jammy` |
-| PostgreSQL 16 | 保存业务数据，`postgres:16` |
+| PostgreSQL 16 + pgvector | 保存业务数据和向量，`pgvector/pgvector:pg16-trixie` |
 | Ollama、bge-m3 | 生成 1024 维知识向量，`ollama/ollama` 和 [bge-m3](https://ollama.com/library/bge-m3) |
 
 Spring Boot、Spring AI 等 Java 依赖由 Maven 根据 `backend/pom.xml` 下载；React、TipTap 等前端依赖由 npm 根据锁文件下载。Dockerfile 负责在上述镜像中编译项目。首次准备需要联网访问镜像仓库、Maven、npm 和模型下载服务，并预留数 GB 磁盘空间。AI 请求使用所配置平台的 API。
@@ -60,7 +60,7 @@ Copy-Item .env.example .env
 docker pull node:22-bookworm-slim
 docker pull maven:3.9-eclipse-temurin-21
 docker pull eclipse-temurin:21-jre-jammy
-docker pull postgres:16
+docker pull pgvector/pgvector:pg16-trixie
 docker pull ollama/ollama
 docker build -t prismprd:local .
 docker network create prismprd
@@ -68,7 +68,7 @@ docker network create prismprd
 
 ### 4. 创建数据库和模型服务
 
-读取数据库配置并创建 [PostgreSQL 容器](https://hub.docker.com/_/postgres)：
+读取数据库配置并创建 [PostgreSQL + pgvector 容器](https://github.com/pgvector/pgvector#docker)：
 
 ```powershell
 . .\scripts\dotenv.ps1
@@ -77,7 +77,7 @@ docker run -d --name prismprd-postgres --network prismprd `
   -e "POSTGRES_DB=$($settings.PRISM_DB_NAME)" `
   -e "POSTGRES_USER=$($settings.PRISM_DB_USER)" `
   -e "POSTGRES_PASSWORD=$($settings.PRISM_DB_PASSWORD)" `
-  -v prismprd-postgres-data:/var/lib/postgresql/data postgres:16
+  -v prismprd-postgres-data:/var/lib/postgresql/data pgvector/pgvector:pg16-trixie
 docker exec prismprd-postgres pg_isready -U $settings.PRISM_DB_USER -d $settings.PRISM_DB_NAME
 ```
 
@@ -103,7 +103,9 @@ docker create --name prismprd-app --network prismprd --restart on-failure:5 `
   -v prismprd-settings:/app/data/settings prismprd:local
 ```
 
-应用启动失败时最多自动重试五次。数据库表结构由 Flyway 在应用启动时创建或迁移。
+应用启动失败时最多自动重试五次。数据库表结构和 `vector` 扩展由 Flyway 在应用启动时创建或迁移，数据库账号需要创建扩展和修改表结构的权限。知识向量使用 `vector` 类型，bge-m3 默认 1,024 维；检索按 PRD 绑定知识库、模型和维度筛选，再执行精确余弦检索。
+
+已有 PostgreSQL 16 数据卷时，先备份数据库并停止应用和数据库容器，再使用相同容器名、数据库配置及数据卷创建 pgvector 容器。复用数据卷时需匹配 PostgreSQL 主版本和 Debian 基础版本；`pg16-trixie` 对应 PostgreSQL 16 / Debian 13。核对数据库可连接后启动应用。V10 迁移会转换已有向量为 pgvector 的单精度格式；数据库大版本升级需要单独迁移数据。
 
 ## 日常使用
 

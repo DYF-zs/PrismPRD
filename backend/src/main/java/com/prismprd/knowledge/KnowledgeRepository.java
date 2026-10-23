@@ -10,6 +10,7 @@ import static com.prismprd.knowledge.KnowledgeTypes.*;
 @RequiredArgsConstructor
 public class KnowledgeRepository {
     private final JdbcTemplate jdbc;
+    private final KnowledgeChunkMapper chunks;
     public JdbcTemplate jdbc() { return jdbc; }
     private static final String VISIBLE = """
         (kb.created_by=? OR EXISTS (SELECT 1 FROM prd_knowledge_binding b
@@ -48,18 +49,11 @@ public class KnowledgeRepository {
     }
 
     public List<Hit> search(UUID prd, double[] query, String model, int limit) {
-        return jdbc.query("""
-            SELECT d.id AS document_id, c.id, d.title, c.section_path, c.chunk_text,
-              (SELECT sum(v.a*v.b) FROM unnest(c.embedding, CAST(? AS double precision[])) AS v(a,b)) AS score
-            FROM knowledge_chunk c JOIN knowledge_document d ON d.id=c.knowledge_document_id
-            JOIN knowledge_base kb ON kb.id=d.knowledge_base_id
-            JOIN prd_knowledge_binding b ON b.knowledge_base_id=kb.id
-            WHERE b.prd_id=? AND kb.enabled AND d.processing_status='READY'
-              AND d.embedding_model=? AND d.embedding_dimensions=?
-            ORDER BY score DESC, c.id LIMIT ?
-            """, (rs, n) -> new Hit(rs.getObject("document_id", UUID.class), rs.getObject("id", UUID.class),
-                    rs.getString("title"), rs.getString("section_path"), rs.getString("chunk_text"), rs.getDouble("score")),
-                OllamaEmbeddingClient.literal(query), prd, model, query.length, limit);
+        return chunks.search(prd, query, model, query.length, limit);
+    }
+
+    public void insertChunk(UUID document, Chunk chunk, int index, double[] embedding) {
+        chunks.insert(UUID.randomUUID(), document, chunk, index, embedding);
     }
 
     public boolean hasBoundBases(UUID prd) {

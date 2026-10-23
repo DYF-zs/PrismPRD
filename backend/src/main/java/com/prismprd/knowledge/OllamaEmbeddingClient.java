@@ -70,7 +70,4 @@ public class OllamaEmbeddingClient {
         return normalized;
     }
 
-    static String literal(double[] vector) {
-        return "{" + String.join(",", Arrays.stream(vector).mapToObj(Double::toString).toList()) + "}";
-    }
 }

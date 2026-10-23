@@ -149,8 +149,7 @@ public class KnowledgeService {
                 repo.jdbc().update("DELETE FROM knowledge_chunk WHERE knowledge_document_id=?",id);
                 for (int i=0;i<chunks.size();i++) {
                     Chunk chunk=chunks.get(i);
-                    repo.jdbc().update("INSERT INTO knowledge_chunk(id,knowledge_document_id,chunk_text,section_path,chunk_index,embedding) VALUES(?,?,?,?,?,CAST(? AS double precision[]))",
-                            UUID.randomUUID(),id,chunk.content(),chunk.sectionPath(),i,OllamaEmbeddingClient.literal(vectors.get(i)));
+                    repo.insertChunk(id,chunk,i,vectors.get(i));
                 }
                 repo.jdbc().update("UPDATE knowledge_document SET parsed_text=?,mime_type=?,processing_status='READY',error_message=NULL,embedding_model=?,embedding_dimensions=?,updated_at=now() WHERE id=?",
                         parsed.markdown(),parsed.mimeType(),embeddings.model(),embeddings.dimensions(),id);
