@@ -40,11 +40,16 @@ PrismPRD 将需求文档的编写、质量检查和交付串联在同一个工�
 
 ## 环境准备
 
-以下步骤适用于 Windows x64。PrismPRD 应用、PostgreSQL 和 Ollama 分别运行在三个 Docker 容器中，使用者按顺序完成安装与初始化。命令在项目根目录的 PowerShell 终端执行。
+PrismPRD 应用、PostgreSQL 和 Ollama 分别运行在三个 Docker 容器中。Windows 与 macOS 共用镜像、配置和数据卷约定，按顺序完成安装与初始化。以下命令均在项目根目录执行；Windows 使用 PowerShell 7，macOS 使用系统终端。
 
 ### 1. 安装软件
 
-安装 [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)，按安装说明启用 WSL 2 和硬件虚拟化，使用 Linux 容器。安装 [PowerShell 7](https://learn.microsoft.com/en-us/powershell/scripting/install/install-powershell-on-windows)，打开 Docker Desktop 并等待引擎就绪；运行 `docker version` 应显示 Client 和 Server 信息。
+| 系统 | 安装准备 |
+| --- | --- |
+| Windows x64 | 安装 [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)，按说明启用 WSL 2 和硬件虚拟化，使用 Linux 容器；安装 [PowerShell 7](https://learn.microsoft.com/en-us/powershell/scripting/install/install-powershell-on-windows)。 |
+| macOS（Intel / Apple Silicon） | 安装对应芯片版本的 [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/)，命令在「终端」中执行。 |
+
+打开 Docker Desktop 并等待引擎就绪，运行 `docker version` 应显示 Client 和 Server 信息。
 
 项目需要以下环境，分别由对应的 Docker 镜像提供：
 
@@ -62,9 +67,9 @@ Spring Boot、Spring AI 等 Java 依赖由 Maven 根据 `backend/pom.xml` 下载
 
 首次使用时创建 `.env`；已有配置时按示例核对并编辑文件。
 
-```powershell
-Copy-Item .env.example .env
-```
+| Windows（PowerShell） | macOS（终端） |
+| --- | --- |
+| `Copy-Item .env.example .env` | `cp .env.example .env` |
 
 编辑 `.env`，填写随机生成的较长数据库密码 `PRISM_DB_PASSWORD`，其余项目按示例保留。配置采用 `KEY=value` 格式，值直接填写，注释独占一行。AI 平台和 API Key 在启动后的「模型设置」页面填写。
 
@@ -72,7 +77,7 @@ Copy-Item .env.example .env
 
 ### 3. 下载镜像并构建应用
 
-```powershell
+```shell
 docker pull node:22-bookworm-slim
 docker pull maven:3.9-eclipse-temurin-21
 docker pull eclipse-temurin:21-jre-jammy
@@ -86,6 +91,8 @@ docker network create prismprd
 
 读取数据库配置并创建 [PostgreSQL + pgvector 容器](https://github.com/pgvector/pgvector#docker)：
 
+**Windows（PowerShell）：**
+
 ```powershell
 . .\scripts\dotenv.ps1
 $settings = Read-PrismDotEnv -Path .\.env
@@ -97,13 +104,28 @@ docker run -d --name prismprd-postgres --network prismprd `
 docker exec prismprd-postgres pg_isready -U $settings.PRISM_DB_USER -d $settings.PRISM_DB_NAME
 ```
 
+**macOS（终端）：**
+
+```sh
+prd_db_name="$(sed -n 's/^PRISM_DB_NAME=//p' .env | tr -d '\r')"
+prd_db_user="$(sed -n 's/^PRISM_DB_USER=//p' .env | tr -d '\r')"
+prd_db_password="$(sed -n 's/^PRISM_DB_PASSWORD=//p' .env | tr -d '\r')"
+
+docker run -d --name prismprd-postgres --network prismprd \
+  -e "POSTGRES_DB=$prd_db_name" \
+  -e "POSTGRES_USER=$prd_db_user" \
+  -e "POSTGRES_PASSWORD=$prd_db_password" \
+  -v prismprd-postgres-data:/var/lib/postgresql/data pgvector/pgvector:pg16-trixie
+
+docker exec prismprd-postgres pg_isready -U "$prd_db_user" -d "$prd_db_name"
+```
+
 等待最后一条命令显示 `accepting connections`，初始化期间可重复执行该命令。数据库名称、用户和密码在数据卷首次初始化时生效。
 
 按 [Ollama 官方说明](https://docs.ollama.com/docker) 创建 CPU 模式容器并下载模型：
 
-```powershell
-docker run -d --name prismprd-ollama --network prismprd `
-  -v prismprd-ollama-models:/root/.ollama ollama/ollama
+```shell
+docker run -d --name prismprd-ollama --network prismprd -v prismprd-ollama-models:/root/.ollama ollama/ollama
 docker exec prismprd-ollama ollama pull bge-m3
 docker exec prismprd-ollama ollama list
 ```
@@ -112,11 +134,8 @@ docker exec prismprd-ollama ollama list
 
 ### 5. 创建应用容器
 
-```powershell
-docker create --name prismprd-app --network prismprd --restart on-failure:5 `
-  --env-file .env --stop-timeout 60 -p 127.0.0.1:8080:8080 `
-  -v prismprd-knowledge:/app/data/knowledge `
-  -v prismprd-settings:/app/data/settings prismprd:local
+```shell
+docker create --name prismprd-app --network prismprd --restart on-failure:5 --env-file .env --stop-timeout 60 -p 127.0.0.1:8080:8080 -v prismprd-knowledge:/app/data/knowledge -v prismprd-settings:/app/data/settings prismprd:local
 ```
 
 应用启动失败时最多自动重试五次。数据库表结构和 `vector` 扩展由 Flyway 在应用启动时创建或迁移，数据库账号需要创建扩展和修改表结构的权限。知识向量使用 `vector` 类型，bge-m3 默认 1,024 维；检索按 PRD 绑定知识库、模型和维度筛选，再执行精确余弦检索。
@@ -125,18 +144,14 @@ docker create --name prismprd-app --network prismprd --restart on-failure:5 `
 
 ## 日常使用
 
-先打开 Docker Desktop，随后启动三个已创建的容器：
+先打开 Docker Desktop，通过对应脚本启动或关闭三个已创建的容器：
 
-```powershell
-.\start.ps1
-docker logs -f prismprd-app
-```
+| 操作 | Windows（PowerShell） | macOS（终端） |
+| --- | --- | --- |
+| 启动 | `.\start.ps1` | `sh ./start.sh` |
+| 关闭 | `.\stop.ps1` | `sh ./stop.sh` |
 
-日志出现 `Started PrismPrdApplication` 后，打开 `http://127.0.0.1:8080`。按 `Ctrl+C` 退出日志查看；应用继续运行。关闭服务：
-
-```powershell
-.\stop.ps1
-```
+运行 `docker logs -f prismprd-app` 查看日志，出现 `Started PrismPrdApplication` 后打开 `http://127.0.0.1:8080`。按 `Ctrl+C` 退出日志查看，应用继续运行。
 
 首次进入页面，打开顶部「模型设置」，添加配置，填写平台 API Key 和模型标识。API 地址填写根路径：DeepSeek 为 `https://api.deepseek.com`，智谱为 `https://open.bigmodel.cn/api/paas`，OpenAI 为 `https://api.openai.com/v1`，兼容服务按其文档填写。容器访问本机 API 服务使用 `host.docker.internal`。支持 HTTPS 地址和显式本机 HTTP 地址；私有网络地址与重定向会被拦截。
 
