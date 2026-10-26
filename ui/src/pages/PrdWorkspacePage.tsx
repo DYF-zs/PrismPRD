@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   Button,
   Input,
@@ -35,6 +35,7 @@ import { deleteVersion, useVersion } from '../api/version'
 import type { PrdDetailResponse, VersionSummary } from '../api/types'
 import { BlockId, normalizeBlockIds } from '../components/editor/blockId'
 import { InlineAI } from '../components/editor/inlineAI'
+import { SourceLocation, locateSourceInEditor, resolveSourceLocation } from '../components/editor/sourceLocation'
 import { useInlineAI } from '../components/editor/useInlineAI'
 import InlineAIController from '../components/editor/InlineAIController'
 import EditorToolbar from '../components/editor/EditorToolbar'
@@ -129,9 +130,10 @@ export default function PrdWorkspacePage() {
   const loadingContentRef = useRef(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editorWrapRef = useRef<HTMLDivElement>(null)
+  const [sourceLocation, setSourceLocation] = useState<{ prdId: string; blockId: string; quote?: string | null } | null>(null)
 
   const editor = useEditor({
-    extensions: [...editorDocumentExtensions.map(extension => extension.name === 'codeBlock' ? DiagramCodeBlock : extension), BlockId, InlineAI],
+    extensions: [...editorDocumentExtensions.map(extension => extension.name === 'codeBlock' ? DiagramCodeBlock : extension), BlockId, InlineAI, SourceLocation],
     content: { type: 'doc', content: [{ type: 'paragraph' }] },
     onUpdate: ({ transaction }) => { if (transaction.docChanged) changeRef.current() },
   })
@@ -378,19 +380,26 @@ export default function PrdWorkspacePage() {
     }
   }
 
-  const locateBlock = (blockId: string) => {
-    const el = editorWrapRef.current?.querySelector(`[data-block-id="${CSS.escape(blockId)}"]`)
-    if (!el) {
+  const locateBlock = (blockId: string, quote?: string | null) => {
+    if (!editor || editor.isDestroyed || !resolveSourceLocation(editor.state.doc, blockId, quote)) {
       message.info('当前草稿中未找到该内容，原文可能已被修改')
       return
     }
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    el.classList.remove('block-flash')
-    // 强制 reflow 让动画可重复触发
-    void (el as HTMLElement).offsetWidth
-    el.classList.add('block-flash')
-    window.setTimeout(() => el.classList.remove('block-flash'), 3200)
+    if (chatView) { const next = new URLSearchParams(searchParams); next.delete('view'); setSearchParams(next) }
+    if (window.innerWidth <= 1100) setChatCollapsed(true)
+    if (!layout.inline.resources) setToolPanel(null)
+    if (!layout.inline.outline) setOutlineCollapsed(true)
+    setReviewDrawerOpen(false)
+    setSourceLocation({ prdId, blockId, quote })
   }
+
+  useLayoutEffect(() => {
+    if (!sourceLocation || !editor || editor.isDestroyed || chatView || loading) return
+    if (sourceLocation.prdId === prdId && !locateSourceInEditor(editor, sourceLocation.blockId, sourceLocation.quote, editorWrapRef.current)) {
+      message.info('原文位置已变化，请基于当前草稿重新生成建议')
+    }
+    setSourceLocation(null)
+  }, [sourceLocation, editor, chatView, loading, prdId])
 
   const doImport = async () => {
     if (mutationRef.current) return
@@ -604,6 +613,7 @@ export default function PrdWorkspacePage() {
             onAutoStarted={() => navigate(location.pathname + location.search, { replace: true, state: null })}
             onFocusEditor={chatView ? () => { setSearchParams({}); setChatCollapsed(window.innerWidth <= 1100) } : undefined}
             localDirty={saveState === 'dirty' || saveState === 'saving'} onApplyPatch={applyDraftPatch}
+            onLocateSource={patch => { if (patch.targetBlockId) locateBlock(patch.targetBlockId, patch.sourceQuote) }}
             onClose={() => { setChatCollapsed(true); if (chatView) setSearchParams({}) }} />
         </aside>
       )}
@@ -616,7 +626,7 @@ export default function PrdWorkspacePage() {
         reviewId={reviewDrawerId}
         open={reviewDrawerOpen}
         onClose={() => setReviewDrawerOpen(false)}
-        onLocate={(blockId) => locateBlock(blockId)}
+        onLocate={(blockId, quote) => locateBlock(blockId, quote)}
         onFinished={() => {
           setReviewRefreshKey((k) => k + 1)
           void refreshMeta()

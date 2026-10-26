@@ -7,6 +7,7 @@ import {
   RobotOutlined,
   SendOutlined,
   ToolOutlined,
+  AimOutlined,
 } from '@ant-design/icons'
 import {
   createSession,
@@ -34,6 +35,7 @@ interface Props {
   onFocusEditor?: () => void
   localDirty: boolean
   onApplyPatch: (patchId: string) => Promise<PatchDetail>
+  onLocateSource?: (patch: PatchDetail) => void
   onClose: () => void
   onDraftRefreshNeeded?: () => void
 }
@@ -46,6 +48,7 @@ export default function ChatPanel({
   onFocusEditor,
   localDirty,
   onApplyPatch,
+  onLocateSource,
   onClose,
   onDraftRefreshNeeded,
 }: Props) {
@@ -313,6 +316,7 @@ export default function ChatPanel({
             busy={patchBusyIds.has(p.id)}
             onApply={() => doApplyPatch(p)}
             onReject={() => doRejectPatch(p)}
+            onLocate={onLocateSource ? () => onLocateSource(p) : undefined}
           />
         ))}
         {agentState && agentState !== 'DONE' && agentState !== 'ERROR' && (
@@ -389,18 +393,21 @@ function PatchCard({
   busy,
   onApply,
   onReject,
+  onLocate,
 }: {
   patch: PatchDetail
   busy: boolean
   onApply: () => void
   onReject: () => void
+  onLocate?: () => void
 }) {
   const done = patch.status !== 'PENDING'
+  const canLocate = !!patch.targetBlockId && !!onLocate
   return (
-    <div className="patch-preview-card">
-      <div className="patch-preview-header">
-        <span>AI 修改建议</span>
-        <Tag color={patch.status === 'APPLIED' ? 'success' : patch.status === 'STALE' ? 'warning' : 'processing'}>
+    <article className="patch-preview-card patch-preview-card--chat" aria-label="AI 修改建议">
+      <div className="patch-preview-head">
+        <span className="patch-preview-title">AI 修改建议</span>
+        <Tag className="patch-preview-status" color={patch.status === 'APPLIED' ? 'success' : patch.status === 'STALE' ? 'warning' : patch.status === 'REJECTED' ? 'default' : 'processing'}>
           {patch.status === 'APPLIED'
             ? '已应用'
             : patch.status === 'REJECTED'
@@ -410,15 +417,27 @@ function PatchCard({
                 : '待确认'}
         </Tag>
       </div>
-      {patch.reason && <div className="patch-reason">{patch.reason}</div>}
-      {patch.sourceQuote && (
-        <pre className="patch-diff-old">{patch.sourceQuote}</pre>
-      )}
-      {patch.newContentMarkdown && (
-        <pre className="patch-diff-new">{patch.newContentMarkdown}</pre>
-      )}
+      {patch.reason && <p className="patch-reason">{patch.reason}</p>}
+      {(patch.sourceQuote || patch.targetBlockId || patch.newContentMarkdown) && <div className="patch-preview-content">
+        {(patch.sourceQuote || patch.targetBlockId) && <section className="patch-diff-block patch-diff-old" aria-label={patch.sourceQuote ? '原文' : '关联段落'}>
+          <div className="patch-source-heading">
+            <span className="patch-diff-label">{patch.sourceQuote ? '原文' : '关联段落'}</span>
+            <Button type="text" size="small" className="patch-locate-button" icon={<AimOutlined />} disabled={!canLocate}
+              onMouseDown={event => event.preventDefault()} onClick={onLocate}>
+              {patch.sourceQuote ? '定位原文' : '定位段落'}
+            </Button>
+          </div>
+          {patch.sourceQuote && <pre className="patch-diff-content"><button type="button" className="patch-source-quote"
+            aria-label="定位此段原文" title="在正文中定位并短暂高亮" disabled={!canLocate}
+            onMouseDown={event => event.preventDefault()} onClick={onLocate}>{patch.sourceQuote}</button></pre>}
+        </section>}
+        {patch.newContentMarkdown && <section className="patch-diff-block patch-diff-new" aria-label="建议修改">
+          <div className="patch-diff-label">建议修改</div>
+          <pre className="patch-diff-content">{patch.newContentMarkdown}</pre>
+        </section>}
+      </div>}
       {!done && (
-        <div className="review-finding-actions">
+        <div className="patch-preview-actions">
           <Button size="small" type="primary" icon={<CheckOutlined />} loading={busy} onClick={onApply}>
             接受
           </Button>
@@ -427,7 +446,7 @@ function PatchCard({
           </Button>
         </div>
       )}
-    </div>
+    </article>
   )
 }
 

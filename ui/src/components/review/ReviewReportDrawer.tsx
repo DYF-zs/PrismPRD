@@ -541,6 +541,7 @@ interface FindingsTabProps {
 }
 
 function FindingsTab({
+  report,
   findings,
   severityFilter,
   statusFilter,
@@ -556,6 +557,7 @@ function FindingsTab({
   onApplyPatch,
   onRejectPatch,
 }: FindingsTabProps) {
+  const dimensionNames = new Map((report.scores ?? []).map(score => [score.dimensionKey, score.dimensionName]))
   const severityOptions: { label: string; value: FindingSeverity | 'ALL' }[] = [
     { label: '全部严重级', value: 'ALL' },
     { label: SEVERITY_META.CRITICAL.label, value: 'CRITICAL' },
@@ -574,27 +576,34 @@ function FindingsTab({
   return (
     <div>
       <div className="review-finding-filters">
-        <Space wrap>
-          {severityOptions.map((o) => (
-            <Tag.CheckableTag
-              key={`sev-${o.value}`}
-              checked={severityFilter === o.value}
-              onChange={() => onSeverityFilter(o.value)}
-            >
-              {o.label}
-            </Tag.CheckableTag>
-          ))}
-          <span className="review-filter-divider" />
-          {statusOptions.map((o) => (
-            <Tag.CheckableTag
-              key={`st-${o.value}`}
-              checked={statusFilter === o.value}
-              onChange={() => onStatusFilter(o.value)}
-            >
-              {o.label}
-            </Tag.CheckableTag>
-          ))}
-        </Space>
+        <div className="review-filter-group" role="group" aria-label="严重程度">
+          <span className="review-filter-label">严重程度</span>
+          <div className="review-filter-options">
+            {severityOptions.map((o) => (
+              <Tag.CheckableTag
+                key={`sev-${o.value}`}
+                checked={severityFilter === o.value}
+                onChange={() => onSeverityFilter(o.value)}
+              >
+                {o.label}
+              </Tag.CheckableTag>
+            ))}
+          </div>
+        </div>
+        <div className="review-filter-group" role="group" aria-label="处理状态">
+          <span className="review-filter-label">处理状态</span>
+          <div className="review-filter-options">
+            {statusOptions.map((o) => (
+              <Tag.CheckableTag
+                key={`st-${o.value}`}
+                checked={statusFilter === o.value}
+                onChange={() => onStatusFilter(o.value)}
+              >
+                {o.label}
+              </Tag.CheckableTag>
+            ))}
+          </div>
+        </div>
       </div>
 
       {findings.length === 0 ? (
@@ -605,47 +614,45 @@ function FindingsTab({
           const status = FINDING_STATUS_META[f.status] ?? { label: f.status, color: 'default' }
           const updating = updatingIds.has(f.id)
           return (
-            <div key={f.id} className="review-finding-card">
+            <article key={f.id} className="review-finding-card" aria-label={f.title}>
               <div className="review-finding-head">
-                <span className="review-finding-title">{f.title}</span>
-                <Tag color={severity.color}>{severity.label}</Tag>
-                <Tag color={status.color}>{status.label}</Tag>
+                <h3 className="review-finding-title">{f.title}</h3>
+                <div className="review-finding-badges">
+                  <Tag color={severity.color}>{severity.label}</Tag>
+                  <Tag color={status.color}>{status.label}</Tag>
+                </div>
               </div>
               {f.dimensions.length > 0 && (
                 <div className="review-finding-dims">
                   {f.dimensions.map((d) => (
-                    <Tag key={d} color="geekblue" style={{ fontSize: 11 }}>
-                      {d}
+                    <Tag key={d} bordered={false}>
+                      {dimensionNames.get(d) || d}
                     </Tag>
                   ))}
                 </div>
               )}
-              {f.quote && (
+              {(f.quote || f.blockId) && (
                 <div className="review-finding-quote">
-                  <Button
-                    size="small"
-                    type="text"
-                    icon={<AimOutlined />}
-                    disabled={!f.blockId}
-                    onClick={() => f.blockId && onLocate(f.blockId, f.quote)}
-                  >
-                    定位原文
-                  </Button>
-                  <blockquote>{f.quote}</blockquote>
+                  <div className="review-finding-source-head">
+                    <span>{f.quote ? '原文摘录' : '关联段落'}</span>
+                    <Button
+                      className="review-finding-locate"
+                      size="small"
+                      type="text"
+                      icon={<AimOutlined />}
+                      disabled={!f.blockId}
+                      onClick={() => f.blockId && onLocate(f.blockId, f.quote)}
+                    >
+                      定位原文
+                    </Button>
+                  </div>
+                  {f.quote && <blockquote>{f.quote}</blockquote>}
                 </div>
               )}
-              {f.reason && (
-                <Typography.Paragraph style={{ marginBottom: 6, fontSize: 13 }}>
-                  <Typography.Text type="secondary">原因：</Typography.Text>
-                  {f.reason}
-                </Typography.Paragraph>
-              )}
-              {f.suggestion && (
-                <Typography.Paragraph style={{ marginBottom: 6, fontSize: 13 }}>
-                  <Typography.Text type="secondary">建议：</Typography.Text>
-                  {f.suggestion}
-                </Typography.Paragraph>
-              )}
+              {(f.reason || f.suggestion) && <dl className="review-finding-details">
+                {f.reason && <div><dt>问题原因</dt><dd>{f.reason}</dd></div>}
+                {f.suggestion && <div><dt>改进建议</dt><dd>{f.suggestion}</dd></div>}
+              </dl>}
               <KnowledgeEvidenceList evidence={f.evidence} />
               {patchByFinding[f.id] && (
                 <PatchPreviewCard
@@ -657,38 +664,38 @@ function FindingsTab({
                   onRegenerate={() => onFix(f)}
                 />
               )}
-              <div className="review-finding-actions">
+              <footer className="review-finding-actions">
                 {f.status === 'OPEN' ? (
                   <>
                     <Button
                       size="small"
                       type="primary"
-                      ghost
                       icon={<ToolOutlined />}
                       loading={fixingIds.has(f.id)}
                       onClick={() => onFix(f)}
                     >
                       AI 修复
                     </Button>
-                    <Button
-                      size="small"
-                      type="primary"
-                      icon={<CheckOutlined />}
-                      loading={updating}
-                      onClick={() => onChangeStatus(f, 'RESOLVED')}
-                    >
-                      标记已解决
-                    </Button>
-                    <Popconfirm title="忽略该问题？" onConfirm={() => onChangeStatus(f, 'IGNORED')}>
-                      <Button size="small" icon={<CloseOutlined />} loading={updating}>
-                        忽略
+                    <div className="review-finding-status-actions">
+                      <Button
+                        size="small"
+                        icon={<CheckOutlined />}
+                        loading={updating}
+                        onClick={() => onChangeStatus(f, 'RESOLVED')}
+                      >
+                        标记已解决
                       </Button>
-                    </Popconfirm>
-                    <Popconfirm title="标记为不修复？" onConfirm={() => onChangeStatus(f, 'WONT_FIX')}>
-                      <Button size="small" icon={<StopOutlined />} loading={updating}>
-                        不修复
-                      </Button>
-                    </Popconfirm>
+                      <Popconfirm title="忽略该问题？" onConfirm={() => onChangeStatus(f, 'IGNORED')}>
+                        <Button size="small" type="text" icon={<CloseOutlined />} loading={updating}>
+                          忽略
+                        </Button>
+                      </Popconfirm>
+                      <Popconfirm title="标记为不修复？" onConfirm={() => onChangeStatus(f, 'WONT_FIX')}>
+                        <Button size="small" type="text" icon={<StopOutlined />} loading={updating}>
+                          不修复
+                        </Button>
+                      </Popconfirm>
+                    </div>
                   </>
                 ) : (
                   <Button
@@ -700,8 +707,8 @@ function FindingsTab({
                     重新打开
                   </Button>
                 )}
-              </div>
-            </div>
+              </footer>
+            </article>
           )
         })
       )}

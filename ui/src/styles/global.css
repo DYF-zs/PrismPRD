@@ -669,22 +669,23 @@ body {
 
 /* ---------- 评审 ---------- */
 
-.block-flash {
-  animation: block-flash-anim 3s ease-out;
-  border-radius: 6px;
+.source-location-text, .source-location-block {
+  background: #fef3c7;
+  animation: source-location-fade 3s ease-out;
 }
+.source-location-text { border-radius: 3px; }
+.source-location-block { border-radius: 6px; outline: 2px solid #f3d875; outline-offset: 3px; }
 
-@keyframes block-flash-anim {
+@keyframes source-location-fade {
   0% {
-    background: rgba(34, 197, 94, 0.32);
-    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.2);
+    background: #fde68a;
   }
   70% {
-    background: rgba(34, 197, 94, 0.16);
+    background: #fef3c7;
   }
   100% {
     background: transparent;
-    box-shadow: none;
+    outline-color: transparent;
   }
 }
 
@@ -933,55 +934,103 @@ body {
 }
 
 .review-finding-filters {
-  margin-bottom: 12px;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
-.review-filter-divider {
-  display: inline-block;
-  width: 1px;
-  height: 14px;
-  background: #e2e8e4;
-  margin: 0 6px;
-  vertical-align: middle;
-}
+.review-filter-group { display: flex; align-items: flex-start; gap: 12px; }
+.review-filter-label { flex: none; padding-block: 2px; color: #758179; font-size: 12px; line-height: 22px; }
+.review-filter-options { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.review-filter-options .ant-tag { margin: 0; padding: 2px 8px; }
 
 .review-finding-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
   border: 1px solid #e8ece9;
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 12px;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 16px;
   background: #fff;
+  color: #2c3931;
+  font-size: 13px;
+  line-height: 1.75;
 }
 
 .review-finding-head {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .review-finding-title {
   flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 15px;
   font-weight: 600;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
 }
+
+.review-finding-badges { display: flex; flex-wrap: wrap; gap: 6px; flex: none; }
+.review-finding-badges .ant-tag { margin: 0; }
 
 .review-finding-dims {
-  margin: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: -6px;
 }
 
-.review-finding-quote blockquote {
-  margin: 6px 0 0;
-  padding: 6px 10px;
-  border-left: 3px solid #f59e0b;
-  background: #fdf9f2;
-  color: #6b7280;
-  font-size: 12.5px;
-  border-radius: 0 6px 6px 0;
+.review-finding-dims .ant-tag { margin: 0; background: #f2f5f3; color: #68766d; font-size: 12px; }
+
+.review-finding-quote {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #eee9de;
+  border-left: 3px solid #dfbd7e;
+  background: #fcfaf6;
+  border-radius: 8px;
 }
+
+.review-finding-source-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; color: #8b7d65; font-size: 12px; }
+.review-finding-locate.ant-btn { flex: none; height: 26px; padding-inline: 6px; color: #64756b; font-size: 12px; }
+
+.review-finding-quote blockquote {
+  margin: 0;
+  color: #5e675f;
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.review-finding-details { display: grid; gap: 10px; margin: 0; min-width: 0; }
+.review-finding-details > div { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 10px; }
+.review-finding-details dt { color: #819087; }
+.review-finding-details dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .review-finding-actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #edf1ee;
+}
+
+.review-finding-actions .ant-btn { min-height: 30px; }
+.review-finding-status-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+
+@media (max-width: 480px) {
+  .review-finding-card { padding: 14px; gap: 12px; }
+  .review-finding-head { flex-direction: column; gap: 8px; }
+  .review-finding-dims { margin-top: -4px; }
+  .review-finding-details > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .review-filter-group { gap: 8px; }
 }
 
 /* ===== AI Fix Patch 预览 ===== */
@@ -1048,6 +1097,98 @@ body {
   font-family: inherit;
   color: #3d5c42;
 }
+
+.patch-preview-card--chat {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 12px;
+  background: #fff;
+  color: #26372e;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.patch-preview-card--chat .patch-preview-head {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+
+.patch-preview-card--chat .patch-preview-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.patch-preview-card--chat .patch-preview-status {
+  flex: none;
+  margin: 0;
+}
+
+.patch-preview-card--chat .patch-reason {
+  margin: 0;
+  color: #68786f;
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.patch-preview-content {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.patch-preview-card--chat .patch-diff-block {
+  min-width: 0;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.patch-preview-card--chat .patch-diff-label {
+  margin-bottom: 6px;
+  color: #59685f;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.patch-preview-card--chat .patch-diff-content {
+  margin: 0;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  tab-size: 2;
+}
+
+.patch-preview-card--chat .patch-diff-old .patch-diff-content { color: #754b46; }
+.patch-preview-card--chat .patch-diff-new .patch-diff-content { color: #315b3b; }
+
+.patch-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #edf1ee;
+}
+
+.patch-preview-actions .ant-btn { min-height: 30px; padding-inline: 12px; }
+
+.patch-source-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.patch-source-heading .patch-diff-label { margin-bottom: 0; }
+.patch-locate-button.ant-btn { flex: none; padding-inline: 4px; height: 24px; font-size: 12px; color: #64746a; }
+.patch-source-quote { display: block; width: 100%; border: 0; padding: 0; background: transparent; font: inherit; color: inherit; text-align: left; white-space: inherit; overflow-wrap: anywhere; cursor: pointer; }
+.patch-source-quote:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
+.patch-source-quote:focus-visible { outline: 2px solid #d4a72c; outline-offset: 3px; border-radius: 2px; }
+.patch-source-quote:disabled { cursor: default; }
 
 /* 测试交付物与固定版本比较 */
 .artifact-controls { padding: 12px; width: 100%; box-sizing: border-box; }
@@ -1236,5 +1377,5 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .block-flash, .panel-resize-handle::after { animation: none; transition: none; }
+  .source-location-text, .source-location-block, .panel-resize-handle::after { animation: none; transition: none; }
 }
